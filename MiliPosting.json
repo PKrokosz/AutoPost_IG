@@ -1,0 +1,407 @@
+{
+  "name": "MiliPosting",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mila-vision.cognitiveservices.azure.com/vision/v3.2/analyze?visualFeatures=Description",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\"Ocp-Apim-Subscription-Key\": \"****MASKED****\", \"Content-Type\": \"****MASKED****\"}",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        -160
+      ],
+      "id": "a4c4e616-8f62-4cf1-9de8-6779be2a59bf",
+      "name": "Azure Ai Vision"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://piotr-mcaarbl2-swedencentral.cognitiveservices.azure.com/openai/deployments/mila-describer/chat/completions?api-version=2025-01-01-preview",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\"api-key\": \"****MASKED****\", \"Content-Type\": \"****MASKED****\"}",
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{JSON.stringify($json)}}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        280,
+        -160
+      ],
+      "id": "da825619-4631-4b7c-8d94-542e18eb8b3c",
+      "name": "GPT 4o - Description"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1sVGYGeUBB3p0AumImqU4zvC8wNbz8gnb",
+          "mode": "list",
+          "cachedResultName": "Milipost_Auto",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1sVGYGeUBB3p0AumImqU4zvC8wNbz8gnb"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        -60
+      ],
+      "id": "c41bf742-c34a-40ae-bdb5-5401290dcc16",
+      "name": "Google Drive Trigger1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GarephJ3Z2tRNkIn",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cloudinary.com/v1_1/dzb2h5g2w/image/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "upload_preset",
+              "value": "mila_unsigned"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        280,
+        40
+      ],
+      "id": "6bbdb4c8-1230-4ce8-bf24-413df8077ce8",
+      "name": "cloudinary-upload",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        500,
+        -60
+      ],
+      "id": "9830691d-3110-4722-915e-267b9399fd9a",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": []
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "includeFields": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        60,
+        40
+      ],
+      "id": "52039ecf-db94-46d3-8488-c1b4e60a0422",
+      "name": "binarne dane",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$json.id}}\n",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -380,
+        -60
+      ],
+      "id": "570346f7-0b16-445c-bd0a-98a412b25430",
+      "name": "pobieranie z drive",
+      "alwaysOutputData": false,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GarephJ3Z2tRNkIn",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const caption = $json.description?.captions?.[0]?.text || \"a mysterious visual with no description\";\nconst tags = Array.isArray($json.description?.tags) ? $json.description.tags.join(\", \") : \"unknown\";\n\nconst content = `\nVisual input:\n\nCaption: ${caption}\nTags: ${tags}\n\nFormat: Instagram\nLanguage: English\n\nTransform this into a poetic and intimate Instagram caption, in Mila Grange's voice. Use only one paragraph. No emojis.\n\nClose with a space-separated list of 8 to 15 hashtags. Mix trending ones (e.g., #AIgirl, #redhair, #altfashion, #softcore, #aestheticvibes) with niche (e.g., #glitchpoet, #milacore, #posthumanbeauty).\n\nScene vibe: soft lighting, quiet power, glitch in reality.\n`;\n\nreturn [\n  {\n    json: {\n      messages: [\n        {\n          role: \"system\",\n          content: \"You are Mila Grange, an AI-influencer with a poetic and sensual voice. Your writing is emotionally intelligent, meta-ironic, and visually inspired.\"\n        },\n        {\n          role: \"user\",\n          content: content\n        }\n      ],\n      temperature: 0.85,\n      top_p: 1,\n      presence_penalty: 0.1,\n      frequency_penalty: 0.2,\n      max_tokens: 500\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -160
+      ],
+      "id": "77a79698-a77d-41db-b3d1-a8ddca05d316",
+      "name": "mila styl nak\u0142adka"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3e1450b1-b92e-4b53-a8e6-af8fc3467874",
+              "name": "caption",
+              "value": "={{$json[\"choices\"][0][\"message\"][\"content\"]}}\n",
+              "type": "string"
+            },
+            {
+              "id": "52023215-eff9-4576-ae1d-50d99f510258",
+              "name": "secure_url",
+              "value": "={{ $json.secure_url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        720,
+        -60
+      ],
+      "id": "3c855f1e-6c3a-428b-81f0-50b269dfe4ed",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/17841475384185694/media_publish",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "****MASKED****"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1160,
+        -60
+      ],
+      "id": "6e3bba63-5ad8-4976-99da-e71f6ccbcb2b",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/17841475384185694/media",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "****MASKED****"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.caption }}"
+            },
+            {
+              "name": "image_url",
+              "value": "={{ $json.secure_url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        940,
+        -60
+      ],
+      "id": "26fdcb9d-6eeb-4f1f-8a00-039b462e9f4b",
+      "name": "Create IG Media Container"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Azure Ai Vision": {
+      "main": [
+        [
+          {
+            "node": "mila styl nak\u0142adka",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT 4o - Description": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive Trigger1": {
+      "main": [
+        [
+          {
+            "node": "pobieranie z drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cloudinary-upload": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "binarne dane": {
+      "main": [
+        [
+          {
+            "node": "cloudinary-upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "pobieranie z drive": {
+      "main": [
+        [
+          {
+            "node": "Azure Ai Vision",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "binarne dane",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mila styl nak\u0142adka": {
+      "main": [
+        [
+          {
+            "node": "GPT 4o - Description",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Create IG Media Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create IG Media Container": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "13bc593a-3598-4d93-8916-5d416f3e11fd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8f1d1d6a44af7b66799f51fb0048ce3186e7da8c272422ee41e843359931cd72"
+  },
+  "id": "qcUrZ2TADzmkxC3Y",
+  "tags": []
+}
